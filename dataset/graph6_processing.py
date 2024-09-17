@@ -7,7 +7,6 @@ def encode_graph(adj):
             binary_string += "".join(str(adj[row][col]) for col in range(row))
     binary_string = binary_string + "0"*(6 - len(binary_string) % 6) if len(binary_string) % 6 != 0 else binary_string
     chunks = [binary_string[index : index + 6] for index in range(0, len(binary_string), 6)]
-    print(chunks)
     graph6 = chr(len(adj) + 63) + "".join(chr(int(chunk, 2) + 63) for chunk in chunks) 
     
     return graph6
@@ -41,13 +40,4 @@ def decode_graph(string):
     return adj_matrix
 
 
-print(encode_graph([
-        [0, 0, 1, 0, 1],
-        [0, 0, 0, 1, 0],
-        [1, 0, 0, 0, 0],
-        [0, 1, 0, 0, 1],
-        [1, 0, 0, 1, 0],
-    ]))
-
-
-print(decode_graph("DQc"))
+decode_graph("O~`HW}GPHDaNaGPCcPWaN")
