@@ -1,3 +1,6 @@
+#@Author: Destin Niyomufasha
+#Message Passing Simplicial Complexes
+
 def encode_graph(adj):
 
     binary_string = ""
