@@ -1,3 +1,6 @@
+# @ Author: Destin Niyomufasha
+# Message Passing Simplicial Complexes
+
 def encode_graph(adj):
 
     binary_string = ""
@@ -17,7 +20,6 @@ def sum(n):
 def decode_graph(string):
 
     n_nodes = ord(string[0]) - 63 # number of vertices in the graph
-
     adj_matrix = [[0 for _ in range(n_nodes)] for _ in range(n_nodes)]
 
     values = [ord(char) - 63 for char in string[1:len(string)]]
@@ -38,6 +40,3 @@ def decode_graph(string):
         right += (right - temp) + 1
 
     return adj_matrix
-
-
-decode_graph("O~`HW}GPHDaNaGPCcPWaN")
