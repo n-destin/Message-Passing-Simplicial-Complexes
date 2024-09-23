@@ -120,7 +120,6 @@ class RaiseGraph():
 
         return False
     
-
     
     def get_adjacencies(self):
         '''
@@ -138,5 +137,3 @@ class RaiseGraph():
                     self.co_boundary[index1][index2] = 1
                 if self.check_boundary(simplex2, simplex1) == ("boundary"):
                     self.boundary[index1][index2] = 1
-
-        return lower, upper, co_boundary, boundary
