@@ -24,7 +24,6 @@ class Simplex():
          self.dimension = len(nodes) - 1
     
 
-
 class RaiseGraph():
     '''
         This class takes in an adjacency matrix of a graph and returns a n-dimensional simplicial complex.
@@ -44,6 +43,11 @@ class RaiseGraph():
             self.simplices = {}
             self.ordering = {}
 
+            self.lower = torch.rand(len(self.simplices[0]), len(self.simplices[0]))
+            self.upper = torch.rand(len(self.simplices[0]), len(self.simplices[0]))
+            self.co_boundary = torch.rand(len(self.simplices[0]), len(self.simplices[0]))
+            self.boundary = torch.rand(len(self.simplices[0]), len(self.simplices[0]))
+
             for dimension in range(len(self.dimension)):
                 self.transform[dimension] = torch.nn.linear(dimension * self.node_dimension, self.simplex_dimension)
 
@@ -60,7 +64,7 @@ class RaiseGraph():
                     self.simplices[dimension].append(Node(node))
             else:
                 for simplex in combinations.combinations(range(len(self.adj_matrix)), dimension + 1):
-                    if self.verify_cycle(simplex):
+                    if self.verify_connectedness(simplex):
                         self.simplices[dimension].append(Simplex(simplex), self.transform[dimension](torch.cat([self.simplices[0][node].get_feature() for node in simplex], dim = 0)))
                         total += 1
         # order the simplices
@@ -69,7 +73,7 @@ class RaiseGraph():
                 self.ordering[index] = simplex
         
 
-    def verify_cycle(self, nodes):
+    def verify_connectedness(self, nodes):
         '''
         Checks if a node can 
         '''
@@ -91,38 +95,48 @@ class RaiseGraph():
         dfs(0)
         return len(visited) == len(nodes)
     
-    def verify_adjacency(self, simplex1, simplex2):
-        '''
-        Verifies if two simplices are adjacent
-        '''
+    def check_boundary(self, simplex1, simplex2):
+        return len(set(simplex1.nodes).difference(set(simplex2.nodes))) == 1 and len(simplex1) > len(simplex2)
 
-        to_return = []
+    def check_co_boundary(self, simplex1, simplex2):
+        return len(set(simplex2.nodes).difference(set(simplex1.nodes))) == 1 and len(simplex2) > len(simplex1)
+
+    def check_lower(self, simplex1, simplex2):
         if len(simplex1) != len(simplex2):
             return False
         else:
-            if len(simplex1) == 1:
-            
-        return []
+            for simplex in self.simplices[simplex1.dimension + 1]:
+                if self.boundary(simplex, simplex1) and self.boundary(simplex, simplex2):
+                    return True
+        return False
+
+    def check_upper(self, simplex1, simplex2):
+        if len(simplex1) != len(simplex2):
+            return False
+        else:
+            for simplex in self.simplices[simplex1.dimension - 1]:
+                if self.co_boundary(simplex1, simplex) and self.co_boundary(simplex2, simplex):
+                    return True
+
+        return False
+    
 
     
     def get_adjacencies(self):
         '''
         Returns the adjacency matrix of the simplicial complex
         '''
-        lower = torch.rand(len(self.simplices[0]), len(self.simplices[0]))
-        upper = torch.rand(len(self.simplices[0]), len(self.simplices[0]))
-        co_boundary = torch.rand(len(self.simplices[0]), len(self.simplices[0]))
-        boundary = torch.rand(len(self.simplices[0]), len(self.simplices[0]))
+
 
         for index1, simplex1 in enumerate(self.simplices[0]):
             for index2, simplex2 in enumerate(self.simplices[0]):
-                if self.verify_adjacency(simplex1, simplex2).contains("lower"):
-                    lower[index1][index2] = 1
-                if self.verify_adjacency(simplex2, simplex1).contains("upper"):
-                    upper[index1][index2] = 1
-                if self.verify_adjacency(simplex1, simplex2).contains("co_boundary"):
-                    co_boundary[index1][index2] = 1
-                if self.verify_adjacency(simplex2, simplex1).contiains("boundary"):
-                    boundary[index1][index2] = 1
+                if self.check_lower(simplex1, simplex2):
+                    self.boundary[index1][index2] = 1
+                if self.check_upper(simplex2, simplex1) == ("upper"):
+                    self.upper[index1][index2] = 1
+                if self.check_co_boundary(simplex1, simplex2) == ("co_boundary"):
+                    self.co_boundary[index1][index2] = 1
+                if self.check_boundary(simplex2, simplex1) == ("boundary"):
+                    self.boundary[index1][index2] = 1
 
         return lower, upper, co_boundary, boundary
