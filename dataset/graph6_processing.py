@@ -2,7 +2,8 @@
 # Message Passing Simplicial Complexes
 
 def encode_graph(adj):
-
+    
+    
     binary_string = ""
     graph6 = ""
     for row in range(len(adj)):

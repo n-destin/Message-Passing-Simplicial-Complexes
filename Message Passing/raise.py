@@ -24,7 +24,7 @@ class Simplex():
          self.dimension = len(nodes) - 1
     
 
-class RaiseGraph():
+class RaisedGraph():
     '''
         This class takes in an adjacency matrix of a graph and returns a n-dimensional simplicial complex.
         The class assumes that the edges don't have their featrures. Their features are consutructed from the nodes.
@@ -43,17 +43,25 @@ class RaiseGraph():
             self.simplices = {}
             self.ordering = {}
 
+
+            self.number_of_simplices = 0
+
+            self.boundary_functions = [self.check_boundary, self.check_co_boundary, self.check_lower, self.check_upper]
+
             self.lower = torch.rand(len(self.simplices[0]), len(self.simplices[0]))
             self.upper = torch.rand(len(self.simplices[0]), len(self.simplices[0]))
             self.co_boundary = torch.rand(len(self.simplices[0]), len(self.simplices[0]))
             self.boundary = torch.rand(len(self.simplices[0]), len(self.simplices[0]))
 
+            ## self.transoforms = torch.nn.Parameter(torch.rand(self.node_dimension, self.simplex_dimension)) ## Use this if aggregating the nodes fo a simplex using mean, sum, max, min
+            
             for dimension in range(len(self.dimension)):
                 self.transform[dimension] = torch.nn.linear(dimension * self.node_dimension, self.simplex_dimension)
 
             # dimension and at least one type of adjacency
             assert self.dimension >= 0 and self.dimension < 4 and (self.lower_adjacecnies or self.upper_adjacencies or self.co_boundary_adjacency or self.boundary_adjacency)
             self.construct_simplices()
+            self.adjacencies = torch.zeros(4, self.number_of_simplices, len(self.simplices[0])) ## adjacency matrices for the simplicial complex
 
     def construct_simplices(self):
         total = len(self.adj_matrix)
@@ -62,11 +70,13 @@ class RaiseGraph():
             if dimension == 0:
                 for node in range(len(self.adj_matrix)):
                     self.simplices[dimension].append(Node(node))
+                    self.number_of_simplices += 1
             else:
                 for simplex in combinations.combinations(range(len(self.adj_matrix)), dimension + 1):
                     if self.verify_connectedness(simplex):
                         self.simplices[dimension].append(Simplex(simplex), self.transform[dimension](torch.cat([self.simplices[0][node].get_feature() for node in simplex], dim = 0)))
                         total += 1
+                        self.number_of_simplices += 1
         # order the simplices
         for index in range(total):
             for simplex in self.simplices[dimension]:
@@ -75,7 +85,7 @@ class RaiseGraph():
 
     def verify_connectedness(self, nodes):
         '''
-        Checks if a node can 
+            Checks if a node can 
         '''
         subgraph =  np.ix_(nodes, nodes)
         degrees = np.sum(subgraph, axis = 0)
@@ -125,15 +135,12 @@ class RaiseGraph():
         '''
         Returns the adjacency matrix of the simplicial complex
         '''
-
-
         for index1, simplex1 in enumerate(self.simplices[0]):
             for index2, simplex2 in enumerate(self.simplices[0]):
-                if self.check_lower(simplex1, simplex2):
-                    self.boundary[index1][index2] = 1
-                if self.check_upper(simplex2, simplex1) == ("upper"):
-                    self.upper[index1][index2] = 1
-                if self.check_co_boundary(simplex1, simplex2) == ("co_boundary"):
-                    self.co_boundary[index1][index2] = 1
-                if self.check_boundary(simplex2, simplex1) == ("boundary"):
-                    self.boundary[index1][index2] = 1
+                for index, boundary_function in self.enumerate(self.boundary_functions):
+                    if boundary_function(simplex1, simplex2):
+                        self.adjacencies[index][index1][index2] = 1
+        
+        return self.adjacencies
+
+        
