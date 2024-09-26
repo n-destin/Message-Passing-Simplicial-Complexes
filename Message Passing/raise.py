@@ -142,5 +142,3 @@ class RaisedGraph():
                         self.adjacencies[index][index1][index2] = 1
         
         return self.adjacencies
-
-        

@@ -10,8 +10,6 @@ class CochainMessagePassing(torch.nn.Module):
     Parameters:
         1. '''
     def __init__(self, 
-                 
-
                  adj_matrix, 
                  node_dimension, 
                  simplex_dimension, 
@@ -49,25 +47,36 @@ class CochainMessagePassing(torch.nn.Module):
         self.transforms = {} # these are the functions to transform
 
         ## we can represent the adjacency matrices in one matrx of dimension (allowed_adjacencies, total_simplices, total_simplices)
-        self.weights = torch.rand(self.num_heads, 4, len(self.raised_graph.boundary), len(self.raised_graph.boundary))
+        self.weights = torch.rand(4, len(self.raised_graph.boundary), len(self.raised_graph.boundary))
+        self.num_complexes = len(self.raised_graph.boundary) # length of one of the adjacency matrices
+
+        self.queries = torch.rand(self.num_heads, 4, self.num_complexes, self.num_complexes)
         
-        for dimension in range(len(self.imensions)): # produce a unified represnetaion of a simplex
+        for dimension in range(len(self.dimension)): # produce a unified represnetaion of a simplex
             self.transforms[dimension] = torch.nn.Linear((dimension + 1) * self.node_dimension, self.simplex_dimension)
 
         self.num_heads = num_heads # number of attention heads
+        self.num_neighborhood = 4 
 
         self.lower = self.raised_graph.lower
         self.upper = self.raised_graph.upper
         self.co_boundary = self.raised_graph.co_boundary
-        self.bounadry = self.raised_graph.boundary
-
-        def forward(self, x):
-            # x is the feature matrix of the nodes 
-
-            for dimension in range(self.dimension):
-                if dimension == 0:
-                    x_transformed = torch.unsqueeze(torch.unqueeze(x, 0).repeat(4, 1, 1), 1).repeat(self.num_heads, 1, 1) # expanding the feature matrix of the nodes to the number of adjacencies and number of heads
+        self.boundary = self.raised_graph.boundary 
 
 
-                else:
-                    pass         
+        self.attention_weights = torch.nn.Parameter(torch.rand(self.batch_size, self.num_neighborhood, self.num_heads, self.num_complexes, 2 * self.node_dimension // self.num_heads ))
+
+    def forward(self, x):
+        # x . the function assumes the dimension to be: batch_size, number_of_neighborhood_functions, number_of_nodes, node_dimension
+        # reshapre the tensor to account for number of heads and the number of nodes. 
+        batch_size, n_neighborhood, n_complexes, dimension = x.shape
+        x_transformed = torch.unsqueeze(x, 0).reshape(batch_size, n_neighborhood, n_complexes, self.num_heads, dimension / self.num_heads).transpose(2, 3)
+        x_transformed_repeat = x_transformed.repeat(1, 1, 1, 1, self.num_complexes)
+        x_transformed_repeat_inteleaved = x_transformed.repeat_interleave(self.num_complexes, dim = -1)
+    
+        x_concatenated = torch.cat([x_transformed_repeat, x_transformed_repeat_inteleaved], dim = -1) # this mergees the two tensors along the last dimension
+
+        attention = torch.nn.functional.softmax(x_concatenated  *self.attention_weights)
+        attention.transpose(2, 3).reshape(batch_size, n_neighborhood, n_complexes, self.num_complexes)
+
+        
