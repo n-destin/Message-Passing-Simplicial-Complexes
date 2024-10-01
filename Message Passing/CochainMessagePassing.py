@@ -1,7 +1,7 @@
 import torch 
 from CellInspector import CellularInspector
 from Raise import RaisedGraph
-from typing import Optional
+from typing import Optional, List, Set
 from torch import Tensor, SparseTensor
 
 
@@ -81,41 +81,81 @@ class CochainMessagePassing(torch.nn.Module):
                 assert size_up[0] == size_down[0]
                 assert size_up[1] == size_up[1]
 
-
         def __check_input_separately(self, index, size):
             return_size = [None, None]
+
             if isinstance(index, Tensor):
                 assert index.dtype == torch.long
                 assert index.dim() == 2
                 assert index.size(0) == 2
-
                 if size is not None:
                     return_size[0] = size[0]
                     return_size[1] = size[1]
-                
                 return return_size
         
             elif isinstance(index, SparseTensor):
                 if self.flow == "target_to_source":
                     raise ValueError(('Flow adjacency targe to source is invalid for message passing via sparsetensor.'))
-
                 return_size[0] = index.sparse_size(1)
                 return_size[1]= index.sparse_size(0)
-
                 return return_size
             
             elif index is None:
                 return return_size
-            
 
             raise ValueError("MessagePassing.propagate only sipport torch.LongTensor of shape [2, num_messages] or torch_sparse.SparseTensor for argemnt edge_index")
         
-            
+
+        def set_size(slef, size : List[Optional[int]], dim : int, src: Tensor):
+            returning_size = size[dim] # get the size at this dimension 
+            if returning_size is None:
+                size[dim] = src.size(self.node_dimension)
+            elif returning_size != src.size(self.node_dimension):
+                raise ValueError(f"Encounterd a tensor with size {src.size(self.node_dimension)} in dimension {self.node_dimension}, but expected size {returning_size}")
         
 
 
 
 
+        def get_msg_and_agg_func(self, adjacency):
+            if adjacency == 'up':
+                return self.message_and_aggregate_up
+            if adjacency == 'down':
+                return self.message_and_aggregate_down
+            elif adjacency == 'boundary':
+                return self.message_and_aggregate_boundary
+            else:
+                return None
+
+        def get_msg_func(self, adjacency):
+            if adjacency == 'up':
+                return self.message_up
+            elif adjacency == 'down':
+                return self.message_down
+            elif adjacency == 'boundary':
+                return self.message_boundary
+            else:
+                return None
+
+        def get_agg_func(self, adjacency):
+            if adjacency == 'up':
+                return self.aggregate_up
+            elif adjacency == 'down':
+                return self.aggregate_down
+            elif adjacency == 'boundary':
+                return self.aggregate_boundary
+            else:
+                return None
+
+        def get_fuse_boolean(self, adjacency):
+            if adjacency == 'up':
+                return self.fuse_up
+            elif adjacency == 'down':
+                return self.fuse_down
+            elif adjacency == 'boundary':
+                return self.fuse_boundary
+            else:
+                return None
 
         self.dropout = dropout # dropout rate
         self.alpha = alpha  # parameter for leaky relu
